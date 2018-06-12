@@ -215,7 +215,7 @@
                 },
                 "Source": {
                     "BuildSpec": "ghost-container/buildspec.yml",
-                    "Location": "https://github.com/jasonumiker/ghost-ecs-fargate",
+                    "Location": "https://github.com/jasonumiker/ghost-ecs-fargate-pipeline",
                     "Type": "GITHUB"
                 },
                 "VpcConfig": {

@@ -179,7 +179,7 @@ ImageEnvironment = codebuild.Environment(
 )
 
 ImageSource = codebuild.Source(
-    Location="https://github.com/jasonumiker/ghost-ecs-fargate",
+    Location="https://github.com/jasonumiker/ghost-ecs-fargate-pipeline",
     Type="GITHUB",
     BuildSpec="ghost-container/buildspec.yml"
 )

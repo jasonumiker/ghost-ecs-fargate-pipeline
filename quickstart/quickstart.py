@@ -19,10 +19,6 @@ db_password = t.add_parameter(Parameter(
     NoEcho=True,
     Description="The database admin account password",
     Type="String",
-    MinLength="1",
-    MaxLength="41",
-    AllowedPattern="[a-zA-Z0-9]*",
-    ConstraintDescription="must contain only alphanumeric characters."
 ))
 
 ghost_image = t.add_parameter(Parameter(
@@ -40,7 +36,7 @@ key_admin_ARN = t.add_parameter(Parameter(
 
 cr_s3_bucket = t.add_parameter(Parameter(
     "CRS3Bucket",
-    Default="ghost-ecs-fargate",
+    Default="ghost-ecs-fargate-pipeline",
     Description="The S3 Bucket that the init_db_lambda.zip for the Custom Resource is located in",
     Type="String"
 ))
@@ -54,7 +50,7 @@ ECSCluster = t.add_resource(ecs.Cluster(
 # Create the CodeCommit Repo
 GhostRepo = t.add_resource(codecommit.Repository(
     "GhostRepo",
-    RepositoryName='ghost-ecs-fargate'
+    RepositoryName='ghost-ecs-fargate-pipeline'
 ))
 
 # Create each required stack
@@ -66,12 +62,12 @@ vpc_stack = t.add_resource(cloudformation.Stack(
         'NumberOfAZs': '2',
         'KeyPairName': Ref(keypair_name),
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate/vpc.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/vpc.template",
 ))
 
 ecs_roles_stack = t.add_resource(cloudformation.Stack(
     "ECSRolesStack",
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate/ecs-roles.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ecs-roles.template",
 ))
 
 dependencies_stack = t.add_resource(cloudformation.Stack(
@@ -87,7 +83,7 @@ dependencies_stack = t.add_resource(cloudformation.Stack(
         'KeyAdminARN': Ref(key_admin_ARN),
         'CRS3Bucket' : Ref(cr_s3_bucket)
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate/dependencies.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/dependencies.template",
 ))
 
 ghost_fargate_stack = t.add_resource(cloudformation.Stack(
@@ -106,7 +102,7 @@ ghost_fargate_stack = t.add_resource(cloudformation.Stack(
         'GhostDBHost': GetAtt(dependencies_stack, "Outputs.GhostDBHost"),
         'GhostURL': GetAtt(dependencies_stack, "Outputs.ALBURL"),
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate/ghost-deploy-fargate.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-deploy-fargate.template",
     DependsOn='DepdendenciesStack'
 ))
 
@@ -119,7 +115,7 @@ clair_fargate_stack = t.add_resource(cloudformation.Stack(
         'ClairVPC': GetAtt(vpc_stack, "Outputs.VPCID"),
         'ClairImage': "jasonumiker/clair:latest"
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate/clair-deploy-fargate.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/clair-deploy-fargate.template",
 ))
 
 ghost_container_build_stack = t.add_resource(cloudformation.Stack(
@@ -130,18 +126,24 @@ ghost_container_build_stack = t.add_resource(cloudformation.Stack(
         'BuildVPC': GetAtt(vpc_stack, "Outputs.VPCID"),
         'ClairURL': GetAtt(clair_fargate_stack, "Outputs.ClairURL"),
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate/ghost-container-build-clair.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair.template",
 ))
 
 ghost_container_pipeline_stack = t.add_resource(cloudformation.Stack(
     "GhostContainerPipelineStack",
     Parameters={
-        'CodeCommitRepo': "ghost-ecs-fargate",
+        'CodeCommitRepo': "ghost-ecs-fargate-pipeline",
         'CodeBuildProject': "ghost-clair-build",
         'ECSClusterName': "Ghost",
         'ECSServiceName': GetAtt(ghost_fargate_stack, "Outputs.GhostFargateServiceName"),
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate/ghost-container-build-clair-pipeline.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template",
+))
+
+ghost_init_codecommit_stack = t.add_resource(cloudformation.Stack(
+    "GhostInitCodeCommitStack",
+    Parameters={'CodeCommitRepoAddr': GetAtt(GhostRepo, "CloneUrlHttp")},
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template",
 ))
 
 # Output the ALB URL
