@@ -1,0 +1,125 @@
+{
+    "Description": "Template to set up a CodeBuild to initialise our CodeCommit repo",
+    "Parameters": {
+        "CodeCommitRepoAddr": {
+            "Description": "The address of the CodeCommit Repo",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "CodeBuildServiceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "CodeBuildServiceRolePolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CloudWatchLogsPolicy"
+                        },
+                        {
+                            "Action": [
+                                "codecommit:GitPull",
+                                "codecommit:GitPush"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CodeCommitPolicy"
+                        },
+                        {
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:GetObjectVersion"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "S3GetObjectPolicy"
+                        },
+                        {
+                            "Action": [
+                                "s3:PutObject"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "S3PutObjectPolicy"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "CodeBuildServiceRolePolicy",
+                "Roles": [
+                    {
+                        "Ref": "CodeBuildServiceRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "CodeCommitInitBuildOutput": {
+            "Type": "AWS::S3::Bucket"
+        },
+        "CodeCommitInitBuildProject": {
+            "DependsOn": "CodeBuildServiceRolePolicy",
+            "Properties": {
+                "Artifacts": {
+                    "Location": {
+                        "Ref": "CodeCommitInitBuildOutput"
+                    },
+                    "Name": "artifacts",
+                    "Type": "S3"
+                },
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "CODECOMMIT_REPO_ADDR",
+                            "Value": {
+                                "Ref": "CodeCommitRepoAddr"
+                            }
+                        }
+                    ],
+                    "Image": "aws/codebuild/docker:17.09.0",
+                    "Type": "LINUX_CONTAINER"
+                },
+                "Name": "init-codecommit-build",
+                "ServiceRole": {
+                    "Ref": "CodeBuildServiceRole"
+                },
+                "Source": {
+                    "BuildSpec": "init-codecommit-pipeline/buildspec.yml",
+                    "Location": "https://github.com/jasonumiker/ghost-ecs-fargate",
+                    "Type": "GITHUB"
+                }
+            },
+            "Type": "AWS::CodeBuild::Project"
+        }
+    }
+}

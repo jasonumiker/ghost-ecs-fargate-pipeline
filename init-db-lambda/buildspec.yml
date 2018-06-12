@@ -1,0 +1,24 @@
+# AWS CodeBuild buildspec to build the init_db_lambda.zip Lambda Bundle
+# By Jason Umiker (jason.umiker@gmail.com)
+# This requires the following environment variables be set on the Project:
+# AWS_DEFAULT_REGION (Supplied by CodeBuild)
+# S3BUCKET to store the file e.g. s3://ghost-ecs-fargate
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Pulling the pip requirements
+      - cd init-db-lambda
+      - pip install pymysql -t .
+      - pip install boto3 -t .
+      - zip -r init_db_lambda.zip .
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Uploading to S3
+      - aws s3 cp init_db_lambda.zip s3://$S3BUCKET/

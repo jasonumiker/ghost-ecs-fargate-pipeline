@@ -1,0 +1,265 @@
+{
+    "Description": "Template to build the Ghost image with CodeBuild with an embedded Clair scan",
+    "Outputs": {
+        "RepositoryURL": {
+            "Description": "The docker repository URL",
+            "Value": {
+                "Fn::Join": [
+                    "",
+                    [
+                        {
+                            "Ref": "AWS::AccountId"
+                        },
+                        ".dkr.ecr.",
+                        {
+                            "Ref": "AWS::Region"
+                        },
+                        ".amazonaws.com/",
+                        {
+                            "Ref": "Repository"
+                        }
+                    ]
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "BuildSubnet": {
+            "Description": "A VPC subnet ID for the build.",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "BuildSubnet2": {
+            "Description": "A 2nd VPC subnet ID for the build.",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "BuildVPC": {
+            "Description": "A VPC subnet ID for the build.",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "ClairURL": {
+            "Description": "The URL to the Clair scanner",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "BuildSecurityGroup": {
+            "Properties": {
+                "GroupDescription": "Ghost Build Security Group.",
+                "VpcId": {
+                    "Ref": "BuildVPC"
+                }
+            },
+            "Type": "AWS::EC2::SecurityGroup"
+        },
+        "CodeBuildServiceRolePolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CloudWatchLogsPolicy"
+                        },
+                        {
+                            "Action": [
+                                "codecommit:GitPull"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CodeCommitPolicy"
+                        },
+                        {
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:GetObjectVersion"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "S3GetObjectPolicy"
+                        },
+                        {
+                            "Action": [
+                                "s3:PutObject"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "S3PutObjectPolicy"
+                        },
+                        {
+                            "Action": [
+                                "ecr:GetAuthorizationToken"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "ecr:*"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:ecr:",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            ":",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            ":repository/",
+                                            {
+                                                "Ref": "Repository"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "ec2:CreateNetworkInterface",
+                                "ec2:DescribeDhcpOptions",
+                                "ec2:DescribeNetworkInterfaces",
+                                "ec2:DeleteNetworkInterface",
+                                "ec2:DescribeSubnets",
+                                "ec2:DescribeSecurityGroups",
+                                "ec2:DescribeVpcs"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        },
+                        {
+                            "Action": [
+                                "ec2:CreateNetworkInterfacePermission"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "CodeBuildServiceRolePolicy",
+                "Roles": [
+                    {
+                        "Ref": "InstanceRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "GhostClairBuildOutput": {
+            "Type": "AWS::S3::Bucket"
+        },
+        "ImageBuildProject": {
+            "DependsOn": "CodeBuildServiceRolePolicy",
+            "Properties": {
+                "Artifacts": {
+                    "Location": {
+                        "Ref": "GhostClairBuildOutput"
+                    },
+                    "Name": "artifacts",
+                    "Type": "S3"
+                },
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "AWS_ACCOUNT_ID",
+                            "Value": {
+                                "Ref": "AWS::AccountId"
+                            }
+                        },
+                        {
+                            "Name": "IMAGE_REPO_NAME",
+                            "Value": {
+                                "Ref": "Repository"
+                            }
+                        },
+                        {
+                            "Name": "IMAGE_TAG",
+                            "Value": "latest"
+                        },
+                        {
+                            "Name": "CLAIR_URL",
+                            "Value": {
+                                "Ref": "ClairURL"
+                            }
+                        }
+                    ],
+                    "Image": "aws/codebuild/docker:17.09.0",
+                    "PrivilegedMode": "true",
+                    "Type": "LINUX_CONTAINER"
+                },
+                "Name": "ghost-clair-build",
+                "ServiceRole": {
+                    "Ref": "InstanceRole"
+                },
+                "Source": {
+                    "BuildSpec": "ghost-container/buildspec.yml",
+                    "Location": "https://github.com/jasonumiker/ghost-ecs-fargate",
+                    "Type": "GITHUB"
+                },
+                "VpcConfig": {
+                    "SecurityGroupIds": [
+                        {
+                            "Ref": "BuildSecurityGroup"
+                        }
+                    ],
+                    "Subnets": [
+                        {
+                            "Ref": "BuildSubnet"
+                        },
+                        {
+                            "Ref": "BuildSubnet2"
+                        }
+                    ],
+                    "VpcId": {
+                        "Ref": "BuildVPC"
+                    }
+                }
+            },
+            "Type": "AWS::CodeBuild::Project"
+        },
+        "InstanceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "Repository": {
+            "Properties": {
+                "RepositoryName": "ghost-clair"
+            },
+            "Type": "AWS::ECR::Repository"
+        }
+    }
+}

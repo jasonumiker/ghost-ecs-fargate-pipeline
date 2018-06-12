@@ -1,0 +1,422 @@
+{
+    "Parameters": {
+        "CodeBuildProject": {
+            "Default": "ghost-clair-build",
+            "Description": "The name of the CodeBuild Project to use for the Build Phase",
+            "Type": "String"
+        },
+        "CodeCommitRepo": {
+            "Default": "ghost-ecs-fargate-pipeline",
+            "Description": "The name of the CodeCommit Repo to pull from",
+            "Type": "String"
+        },
+        "ECSClusterName": {
+            "Default": "Ghost",
+            "Description": "The ECS Cluster to Update",
+            "Type": "String"
+        },
+        "ECSServiceName": {
+            "Description": "The ECS Service to Update",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "CloudWatchEventsPolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "codepipeline:StartPipelineExecution"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:codepipeline:",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            ":",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            ":",
+                                            {
+                                                "Ref": "GhostPipeline"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "CloudWatchEventsPolicy",
+                "Roles": [
+                    {
+                        "Ref": "CloudWatchEventsRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "CloudWatchEventsRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "events.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "CodeCommitRule": {
+            "Properties": {
+                "Description": "CodeCommit State Change CloudWatch Event",
+                "EventPattern": {
+                    "detail": {
+                        "referenceName": [
+                            "master"
+                        ],
+                        "referenceType": [
+                            "branch"
+                        ]
+                    },
+                    "detail-type": [
+                        "CodeCommit Repository State Change"
+                    ],
+                    "resources": [
+                        {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:codecommit:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "CodeCommitRepo"
+                                    }
+                                ]
+                            ]
+                        }
+                    ],
+                    "source": [
+                        "aws.codecommit"
+                    ]
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:codepipeline:",
+                                    {
+                                        "Ref": "AWS::Region"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":",
+                                    {
+                                        "Ref": "GhostPipeline"
+                                    }
+                                ]
+                            ]
+                        },
+                        "Id": "1",
+                        "RoleArn": {
+                            "Fn::GetAtt": [
+                                "CloudWatchEventsRole",
+                                "Arn"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        },
+        "CodePipelineServicePolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "iam:PassRole",
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        },
+                        {
+                            "Action": [
+                                "ecs:DescribeTaskDefinition",
+                                "ecs:RegisterTaskDefinition",
+                                "ecs:DescribeServices",
+                                "ecs:UpdateService",
+                                "ecs:DescribeTasks",
+                                "ecs:ListTasks"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        },
+                        {
+                            "Action": [
+                                "codebuild:StartBuild",
+                                "codebuild:BatchGetBuilds"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:codebuild:",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            ":",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            ":project/",
+                                            {
+                                                "Ref": "CodeBuildProject"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "codecommit:UploadArchive",
+                                "codecommit:GetCommit",
+                                "codecommit:GetUploadArchiveStatus",
+                                "codecommit:GetBranch",
+                                "codecommit:CancelUploadArchive"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:codecommit:",
+                                            {
+                                                "Ref": "AWS::Region"
+                                            },
+                                            ":",
+                                            {
+                                                "Ref": "AWS::AccountId"
+                                            },
+                                            ":",
+                                            {
+                                                "Ref": "CodeCommitRepo"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "s3:ListBucket"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "GhostPipelineBucket"
+                                            }
+                                        ]
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "s3:PutObject",
+                                "s3:GetObject"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                {
+                                    "Fn::Join": [
+                                        "",
+                                        [
+                                            "arn:aws:s3:::",
+                                            {
+                                                "Ref": "GhostPipelineBucket"
+                                            },
+                                            "/*"
+                                        ]
+                                    ]
+                                }
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "CodePipelineServicePolicy",
+                "Roles": [
+                    {
+                        "Ref": "CodePipelineServiceRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "CodePipelineServiceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "codepipeline.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "GhostPipeline": {
+            "Properties": {
+                "ArtifactStore": {
+                    "Location": {
+                        "Ref": "GhostPipelineBucket"
+                    },
+                    "Type": "S3"
+                },
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "CodePipelineServiceRole",
+                        "Arn"
+                    ]
+                },
+                "Stages": [
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Source",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeCommit",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "BranchName": "master",
+                                    "PollForSourceChanges": "false",
+                                    "RepositoryName": {
+                                        "Ref": "CodeCommitRepo"
+                                    }
+                                },
+                                "Name": "Source",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "MyApp"
+                                    }
+                                ],
+                                "RunOrder": "1"
+                            }
+                        ],
+                        "Name": "Source"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Build",
+                                    "Owner": "AWS",
+                                    "Provider": "CodeBuild",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ProjectName": {
+                                        "Ref": "CodeBuildProject"
+                                    }
+                                },
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "MyApp"
+                                    }
+                                ],
+                                "Name": "Build",
+                                "OutputArtifacts": [
+                                    {
+                                        "Name": "MyAppBuild"
+                                    }
+                                ],
+                                "RunOrder": "1"
+                            }
+                        ],
+                        "Name": "Build"
+                    },
+                    {
+                        "Actions": [
+                            {
+                                "ActionTypeId": {
+                                    "Category": "Deploy",
+                                    "Owner": "AWS",
+                                    "Provider": "ECS",
+                                    "Version": "1"
+                                },
+                                "Configuration": {
+                                    "ClusterName": {
+                                        "Ref": "ECSClusterName"
+                                    },
+                                    "FileName": "images.json",
+                                    "ServiceName": {
+                                        "Ref": "ECSServiceName"
+                                    }
+                                },
+                                "InputArtifacts": [
+                                    {
+                                        "Name": "MyAppBuild"
+                                    }
+                                ],
+                                "Name": "DevDeploy",
+                                "RunOrder": "1"
+                            }
+                        ],
+                        "Name": "DevDeploy"
+                    }
+                ]
+            },
+            "Type": "AWS::CodePipeline::Pipeline"
+        },
+        "GhostPipelineBucket": {
+            "Type": "AWS::S3::Bucket"
+        }
+    }
+}

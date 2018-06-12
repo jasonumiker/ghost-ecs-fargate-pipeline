@@ -1,0 +1,164 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Outputs": {
+        "ECSInstanceProfileName": {
+            "Description": "Instance Profile Name",
+            "Value": {
+                "Ref": "ECSInstanceProfile"
+            }
+        },
+        "ECSInstanceRoleArn": {
+            "Description": "Instance Role Arn",
+            "Value": {
+                "Fn::GetAtt": [
+                    "ECSInstanceRole",
+                    "Arn"
+                ]
+            }
+        },
+        "ECSSpotFleetRoleName": {
+            "Description": "Spot Fleet Role Name",
+            "Value": {
+                "Ref": "ECSSpotFleetRole"
+            }
+        }
+    },
+    "Resources": {
+        "ECSInstancePolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "ecs:CreateCluster",
+                                "ecs:DeregisterContainerInstance",
+                                "ecs:DiscoverPollEndpoint",
+                                "ecs:Poll",
+                                "ecs:RegisterContainerInstance",
+                                "ecs:StartTelemetrySession",
+                                "ecs:UpdateContainerInstancesState",
+                                "ecs:Submit*",
+                                "ecr:GetAuthorizationToken",
+                                "ecr:BatchCheckLayerAvailability",
+                                "ecr:GetDownloadUrlForLayer",
+                                "ecr:BatchGetImage",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "ECSInstancePolicy",
+                "Roles": [
+                    {
+                        "Ref": "ECSInstanceRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "ECSInstanceProfile": {
+            "Properties": {
+                "Roles": [
+                    {
+                        "Ref": "ECSInstanceRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::InstanceProfile"
+        },
+        "ECSInstanceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "ECSSpotFleetPolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "ec2:DescribeImages",
+                                "ec2:DescribeSubnets",
+                                "ec2:RequestSpotInstances",
+                                "ec2:TerminateInstances",
+                                "ec2:DescribeInstanceStatus",
+                                "iam:PassRole"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "elasticloadbalancing:RegisterInstancesWithLoadBalancer"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "arn:aws:elasticloadbalancing:*:*:loadbalancer/*"
+                            ]
+                        },
+                        {
+                            "Action": [
+                                "elasticloadbalancing:RegisterTargets"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ]
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "SpotFleetPolicy",
+                "Roles": [
+                    {
+                        "Ref": "ECSSpotFleetRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "ECSSpotFleetRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "spotfleet.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        }
+    }
+}

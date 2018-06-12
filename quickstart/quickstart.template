@@ -1,0 +1,288 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Outputs": {
+        "ALBURL": {
+            "Description": "URL of the ALB",
+            "Value": {
+                "Fn::GetAtt": [
+                    "DepdendenciesStack",
+                    "Outputs.ALBURL"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "CRS3Bucket": {
+            "Default": "ghost-ecs-fargate",
+            "Description": "The S3 Bucket that the init_db_lambda.zip for the Custom Resource is located in",
+            "Type": "String"
+        },
+        "DBPassword": {
+            "AllowedPattern": "[a-zA-Z0-9]*",
+            "ConstraintDescription": "must contain only alphanumeric characters.",
+            "Description": "The database admin account password",
+            "MaxLength": "41",
+            "MinLength": "1",
+            "NoEcho": true,
+            "Type": "String"
+        },
+        "GhostImage": {
+            "Default": "jasonumiker/ghost:latest",
+            "Description": "The Ghost image to deploy",
+            "Type": "String"
+        },
+        "KeyAdminARN": {
+            "Description": "The ARN for the User/Role that can manage the RDS KMS key (e.g. arn:aws:iam::111122223333:root)",
+            "Type": "String"
+        },
+        "KeypairName": {
+            "Description": "The name of your EC2 KeyPair for SSH.",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        }
+    },
+    "Resources": {
+        "ClairFargateStack": {
+            "Properties": {
+                "Parameters": {
+                    "ClairImage": "jasonumiker/clair:latest",
+                    "ClairSubnet": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet1AID"
+                        ]
+                    },
+                    "ClairSubnet2": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet2AID"
+                        ]
+                    },
+                    "ClairVPC": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.VPCID"
+                        ]
+                    },
+                    "Cluster": "Ghost"
+                },
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/clair-deploy-fargate.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "DepdendenciesStack": {
+            "Properties": {
+                "Parameters": {
+                    "ALBSubnet": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PublicSubnet1ID"
+                        ]
+                    },
+                    "ALBSubnet2": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PublicSubnet2ID"
+                        ]
+                    },
+                    "CRS3Bucket": {
+                        "Ref": "CRS3Bucket"
+                    },
+                    "DBMultiAZ": "False",
+                    "DBPassword": {
+                        "Ref": "DBPassword"
+                    },
+                    "DBSubnet": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet1AID"
+                        ]
+                    },
+                    "DBSubnet2": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet2AID"
+                        ]
+                    },
+                    "DBVPC": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.VPCID"
+                        ]
+                    },
+                    "KeyAdminARN": {
+                        "Ref": "KeyAdminARN"
+                    }
+                },
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/dependencies.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "ECSCluster": {
+            "Properties": {
+                "ClusterName": "Ghost"
+            },
+            "Type": "AWS::ECS::Cluster"
+        },
+        "ECSRolesStack": {
+            "Properties": {
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/ecs_roles.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "GhostContainerBuildStack": {
+            "Properties": {
+                "Parameters": {
+                    "BuildSubnet": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet1AID"
+                        ]
+                    },
+                    "BuildSubnet2": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet2AID"
+                        ]
+                    },
+                    "BuildVPC": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.VPCID"
+                        ]
+                    },
+                    "ClairURL": {
+                        "Fn::GetAtt": [
+                            "ClairFargateStack",
+                            "Outputs.ClairURL"
+                        ]
+                    }
+                },
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/ghost-container-build-clair.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "GhostContainerPipelineStack": {
+            "Properties": {
+                "Parameters": {
+                    "CodeBuildProject": "ghost-clair-build",
+                    "CodeCommitRepo": "ghost-ecs-fargate",
+                    "ECSClusterName": "Ghost",
+                    "ECSServiceName": {
+                        "Fn::GetAtt": [
+                            "GhostFargateStack",
+                            "Outputs.GhostFargateServiceName"
+                        ]
+                    }
+                },
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/ghost-container-build-clair-pipeline.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "GhostFargateStack": {
+            "DependsOn": "DepdendenciesStack",
+            "Properties": {
+                "Parameters": {
+                    "Cluster": "Ghost",
+                    "ExecutionRoleARN": {
+                        "Fn::GetAtt": [
+                            "DepdendenciesStack",
+                            "Outputs.TaskExecutionRoleArn"
+                        ]
+                    },
+                    "GhostDBHost": {
+                        "Fn::GetAtt": [
+                            "DepdendenciesStack",
+                            "Outputs.GhostDBHost"
+                        ]
+                    },
+                    "GhostImage": {
+                        "Ref": "GhostImage"
+                    },
+                    "GhostLBTargetARN": {
+                        "Fn::GetAtt": [
+                            "DepdendenciesStack",
+                            "Outputs.GhostTG"
+                        ]
+                    },
+                    "GhostLogGroup": {
+                        "Fn::GetAtt": [
+                            "DepdendenciesStack",
+                            "Outputs.GhostLogGroupName"
+                        ]
+                    },
+                    "GhostSecurityGroup": {
+                        "Fn::GetAtt": [
+                            "DepdendenciesStack",
+                            "Outputs.GhostSG"
+                        ]
+                    },
+                    "GhostSubnet": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet1AID"
+                        ]
+                    },
+                    "GhostSubnet2": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.PrivateSubnet2AID"
+                        ]
+                    },
+                    "GhostURL": {
+                        "Fn::GetAtt": [
+                            "DepdendenciesStack",
+                            "Outputs.ALBURL"
+                        ]
+                    },
+                    "GhostVPC": {
+                        "Fn::GetAtt": [
+                            "VPCStack",
+                            "Outputs.VPCID"
+                        ]
+                    },
+                    "TaskRoleARN": {
+                        "Fn::GetAtt": [
+                            "DepdendenciesStack",
+                            "Outputs.TaskRoleArn"
+                        ]
+                    }
+                },
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/fargate_deploy.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "GhostRepo": {
+            "Properties": {
+                "RepositoryName": "ghost-ecs-fargate"
+            },
+            "Type": "AWS::CodeCommit::Repository"
+        },
+        "VPCStack": {
+            "Properties": {
+                "Parameters": {
+                    "AvailabilityZones": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "a,",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "b"
+                            ]
+                        ]
+                    },
+                    "KeyPairName": {
+                        "Ref": "KeypairName"
+                    },
+                    "NumberOfAZs": "2"
+                },
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/vpc.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        }
+    }
+}

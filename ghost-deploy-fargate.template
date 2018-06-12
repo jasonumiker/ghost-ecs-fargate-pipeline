@@ -1,0 +1,180 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Outputs": {
+        "GhostFargateServiceName": {
+            "Description": "Ghost Fargate Service Name",
+            "Value": {
+                "Fn::GetAtt": [
+                    "GhostService",
+                    "Name"
+                ]
+            }
+        }
+    },
+    "Parameters": {
+        "Cluster": {
+            "Description": "The ECS Cluster to deploy to.",
+            "Type": "String"
+        },
+        "ExecutionRoleARN": {
+            "Description": "The ARN of the execution role for the task.",
+            "Type": "String"
+        },
+        "GhostDBHost": {
+            "Description": "The FQDN of the Database.",
+            "Type": "String"
+        },
+        "GhostImage": {
+            "Description": "The Ghost container image to deploy.",
+            "Type": "String"
+        },
+        "GhostLBTargetARN": {
+            "Description": "The ARN of the ALB Target Group for Ghost.",
+            "Type": "String"
+        },
+        "GhostLogGroup": {
+            "Description": "The Name of the Log Group to log to.",
+            "Type": "String"
+        },
+        "GhostSecurityGroup": {
+            "Description": "The ID of the Security Group for the Tasks.",
+            "Type": "AWS::EC2::SecurityGroup::Id"
+        },
+        "GhostSubnet": {
+            "Description": "A VPC subnet ID for the container.",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "GhostSubnet2": {
+            "Description": "A 2nd VPC subnet ID for the container.",
+            "Type": "AWS::EC2::Subnet::Id"
+        },
+        "GhostURL": {
+            "Description": "The URL of the service (e.g. https://ghost.example.com).",
+            "Type": "String"
+        },
+        "GhostVPC": {
+            "Description": "A VPC subnet ID for the container.",
+            "Type": "AWS::EC2::VPC::Id"
+        },
+        "TaskRoleARN": {
+            "Description": "The ARN of the role for the task.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "GhostService": {
+            "Properties": {
+                "Cluster": {
+                    "Ref": "Cluster"
+                },
+                "DesiredCount": 1,
+                "LaunchType": "FARGATE",
+                "LoadBalancers": [
+                    {
+                        "ContainerName": "ghost",
+                        "ContainerPort": 2368,
+                        "TargetGroupArn": {
+                            "Ref": "GhostLBTargetARN"
+                        }
+                    }
+                ],
+                "NetworkConfiguration": {
+                    "AwsvpcConfiguration": {
+                        "SecurityGroups": [
+                            {
+                                "Ref": "GhostSecurityGroup"
+                            }
+                        ],
+                        "Subnets": [
+                            {
+                                "Ref": "GhostSubnet"
+                            },
+                            {
+                                "Ref": "GhostSubnet2"
+                            }
+                        ]
+                    }
+                },
+                "TaskDefinition": {
+                    "Ref": "GhostTaskDefinition"
+                }
+            },
+            "Type": "AWS::ECS::Service"
+        },
+        "GhostTaskDefinition": {
+            "Properties": {
+                "ContainerDefinitions": [
+                    {
+                        "Environment": [
+                            {
+                                "Name": "url",
+                                "Value": {
+                                    "Ref": "GhostURL"
+                                }
+                            },
+                            {
+                                "Name": "database__client",
+                                "Value": "mysql2"
+                            },
+                            {
+                                "Name": "database__connection__host",
+                                "Value": {
+                                    "Ref": "GhostDBHost"
+                                }
+                            },
+                            {
+                                "Name": "database__connection__user",
+                                "Value": "ghost"
+                            },
+                            {
+                                "Name": "database__connection__database",
+                                "Value": "ghost"
+                            },
+                            {
+                                "Name": "AWSREGION",
+                                "Value": {
+                                    "Ref": "AWS::Region"
+                                }
+                            }
+                        ],
+                        "Essential": "true",
+                        "Image": {
+                            "Ref": "GhostImage"
+                        },
+                        "LogConfiguration": {
+                            "LogDriver": "awslogs",
+                            "Options": {
+                                "awslogs-group": {
+                                    "Ref": "GhostLogGroup"
+                                },
+                                "awslogs-region": {
+                                    "Ref": "AWS::Region"
+                                },
+                                "awslogs-stream-prefix": "ghost"
+                            }
+                        },
+                        "Name": "ghost",
+                        "PortMappings": [
+                            {
+                                "ContainerPort": 2368
+                            }
+                        ]
+                    }
+                ],
+                "Cpu": "512",
+                "ExecutionRoleArn": {
+                    "Ref": "ExecutionRoleARN"
+                },
+                "Memory": "1GB",
+                "NetworkMode": "awsvpc",
+                "RequiresCompatibilities": [
+                    "FARGATE"
+                ],
+                "TaskRoleArn": {
+                    "Ref": "TaskRoleARN"
+                }
+            },
+            "Type": "AWS::ECS::TaskDefinition"
+        }
+    }
+}

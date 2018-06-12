@@ -1,1 +1,0 @@
-# ghost-ecs-fargate-pipeline

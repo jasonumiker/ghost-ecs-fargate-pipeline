@@ -1,0 +1,19 @@
+# AWS CodeBuild buildspec to pull from GitHub and push to CodeCommit
+# By Jason Umiker (jason.umiker@gmail.com)
+# This requires the following environment variables be set on the Project:
+# CODECOMMIT_REPO_ADDR
+
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Setting up CodeCommit credential helper for git
+      - git config --global credential.helper '!aws codecommit credential-helper $@'
+      - git config --global credential.UseHttpPath true
+  build:
+    commands:
+      - echo Build started on `date`
+      - git remote add codecommit $CODECOMMIT_REPO_ADDR
+      - echo Pushing the project to CodeCommit
+      - git push codecommit master
