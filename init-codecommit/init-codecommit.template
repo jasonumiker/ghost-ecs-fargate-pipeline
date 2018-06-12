@@ -1,0 +1,275 @@
+{
+    "Description": "Template to set up a CodeBuild to initialise our CodeCommit repo",
+    "Parameters": {
+        "CodeCommitRepoAddr": {
+            "Description": "The address of the CodeCommit Repo",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "CodeBuildInit": {
+            "DependsOn": "CodeCommitInitBuildProject",
+            "Properties": {
+                "ProjectName": "ghost-pipeline-init-codecommit",
+                "ServiceToken": {
+                    "Fn::GetAtt": [
+                        "CodeBuildInitFunction",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "Custom::CodeBuildTrigger"
+        },
+        "CodeBuildInitFunction": {
+            "Properties": {
+                "Code": {
+                    "ZipFile": {
+                        "Fn::Join": [
+                            "\n",
+                            [
+                                "import os",
+                                "import boto3",
+                                "import logging",
+                                "import json",
+                                "import time",
+                                "from botocore.vendored import requests",
+                                "",
+                                "log = logging.getLogger()",
+                                "log.setLevel(logging.INFO)",
+                                "",
+                                "SUCCESS = \"SUCCESS\"",
+                                "FAILED = \"FAILED\"",
+                                "",
+                                "def handler(event, context):",
+                                "    build = {'projectName': event['ResourceProperties']['ProjectName']}",
+                                "    log.info(\"Event: \" + str(event))",
+                                "",
+                                "    if (event['RequestType'] == 'Delete'):",
+                                "        response = send(event,context, SUCCESS, {}, None)",
+                                "        return {'Response' : response}",
+                                "",
+                                "    else:",
+                                "        try:",
+                                "            client = boto3.client('codebuild')",
+                                "            codebuildresponse = client.start_build(**build)",
+                                "            log.info(\"CodeBuild Response: \" + str(codebuildresponse))",
+                                "            response = send(event,context, SUCCESS, {}, None)",
+                                "",
+                                "        except Exception as error:",
+                                "            log.info(\"CodeBuild Exception: \" + str(error))",
+                                "            response = send(event, context, FAILED, {}, None)",
+                                "            return {'Response' : response}",
+                                "",
+                                "def send(event, context, responseStatus, responseData, physicalResourceId):",
+                                "    responseUrl = event['ResponseURL']",
+                                "",
+                                "    log.info(\"ResponseURL: \" + responseUrl)",
+                                "",
+                                "    responseBody = {}",
+                                "    responseBody['Status'] = responseStatus",
+                                "    responseBody['Reason'] = 'See the details in CloudWatch Log Stream: ' + context.log_stream_name",
+                                "    responseBody['PhysicalResourceId'] = physicalResourceId or context.log_stream_name",
+                                "    responseBody['StackId'] = event['StackId']",
+                                "    responseBody['RequestId'] = event['RequestId']",
+                                "    responseBody['LogicalResourceId'] = event['LogicalResourceId']",
+                                "    responseBody['Data'] = responseData",
+                                "",
+                                "    json_responseBody = json.dumps(responseBody)",
+                                "",
+                                "    log.info(\"Response body: \" + str(json_responseBody))",
+                                "",
+                                "    headers = {",
+                                "        'content-type': '',",
+                                "        'content-length': str(len(json_responseBody))",
+                                "    }",
+                                "",
+                                "    try:",
+                                "        response = requests.put(responseUrl,",
+                                "                                data=json_responseBody,",
+                                "                                headers=headers)",
+                                "        log.info(\"Status code: \" + str(response.reason))",
+                                "        return SUCCESS",
+                                "        ",
+                                "    except Exception as e:",
+                                "        log.error(\"Error sending response: \" + str(e))",
+                                "        return FAILED"
+                            ]
+                        ]
+                    }
+                },
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "LambdaExecutionRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.6",
+                "Timeout": "180"
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "CodeBuildServiceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "codebuild.amazonaws.com"
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "CodeBuildServiceRolePolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CloudWatchLogsPolicy"
+                        },
+                        {
+                            "Action": [
+                                "codecommit:GitPull",
+                                "codecommit:GitPush"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CodeCommitPolicy"
+                        },
+                        {
+                            "Action": [
+                                "s3:GetObject",
+                                "s3:GetObjectVersion"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "S3GetObjectPolicy"
+                        },
+                        {
+                            "Action": [
+                                "s3:PutObject"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "S3PutObjectPolicy"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "CodeBuildServiceRolePolicy",
+                "Roles": [
+                    {
+                        "Ref": "CodeBuildServiceRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "CodeCommitInitBuildProject": {
+            "DependsOn": "CodeBuildServiceRolePolicy",
+            "Properties": {
+                "Artifacts": {
+                    "Type": "NO_ARTIFACTS"
+                },
+                "Environment": {
+                    "ComputeType": "BUILD_GENERAL1_SMALL",
+                    "EnvironmentVariables": [
+                        {
+                            "Name": "CODECOMMIT_REPO_ADDR",
+                            "Value": {
+                                "Ref": "CodeCommitRepoAddr"
+                            }
+                        }
+                    ],
+                    "Image": "aws/codebuild/docker:17.09.0",
+                    "Type": "LINUX_CONTAINER"
+                },
+                "Name": "ghost-pipeline-init-codecommit",
+                "ServiceRole": {
+                    "Ref": "CodeBuildServiceRole"
+                },
+                "Source": {
+                    "BuildSpec": "init-codecommit/buildspec.yml",
+                    "Location": "https://github.com/jasonumiker/ghost-ecs-fargate-pipeline",
+                    "Type": "GITHUB"
+                }
+            },
+            "Type": "AWS::CodeBuild::Project"
+        },
+        "LambdaExecutionRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "sts:AssumeRole",
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "LambdaPolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CloudWatchLogsPolicy"
+                        },
+                        {
+                            "Action": [
+                                "codebuild:StartBuild"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": [
+                                "*"
+                            ],
+                            "Sid": "CodeBuildPolicy"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "LambdaPolicy",
+                "Roles": [
+                    {
+                        "Ref": "LambdaExecutionRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        }
+    }
+}

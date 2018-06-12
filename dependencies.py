@@ -8,7 +8,6 @@ from troposphere import Template, Ref, Output, GetAtt, \
 
 class CustomDBInit(cloudformation.AWSCustomObject):
     resource_type = "Custom::DBInit"
-
     props = {
         'ServiceToken': (str, True),
         'Password': (str, True)
