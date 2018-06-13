@@ -12,17 +12,8 @@
         }
     },
     "Parameters": {
-        "CRS3Bucket": {
-            "Default": "ghost-ecs-fargate",
-            "Description": "The S3 Bucket that the init_db_lambda.zip for the Custom Resource is located in",
-            "Type": "String"
-        },
         "DBPassword": {
-            "AllowedPattern": "[a-zA-Z0-9]*",
-            "ConstraintDescription": "must contain only alphanumeric characters.",
             "Description": "The database admin account password",
-            "MaxLength": "41",
-            "MinLength": "1",
             "NoEcho": true,
             "Type": "String"
         },
@@ -65,11 +56,12 @@
                     },
                     "Cluster": "Ghost"
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/clair-deploy-fargate.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/clair-deploy-fargate.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
         "DepdendenciesStack": {
+            "DependsOn": "InitDBLambdaInit",
             "Properties": {
                 "Parameters": {
                     "ALBSubnet": {
@@ -85,7 +77,10 @@
                         ]
                     },
                     "CRS3Bucket": {
-                        "Ref": "CRS3Bucket"
+                        "Fn::GetAtt": [
+                            "InitDBLambdaBuild",
+                            "Outputs.OutputBucket"
+                        ]
                     },
                     "DBMultiAZ": "False",
                     "DBPassword": {
@@ -113,7 +108,7 @@
                         "Ref": "KeyAdminARN"
                     }
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/dependencies.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/dependencies.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
@@ -125,7 +120,7 @@
         },
         "ECSRolesStack": {
             "Properties": {
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/ecs_roles.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ecs-roles.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
@@ -157,7 +152,7 @@
                         ]
                     }
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/ghost-container-build-clair.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
@@ -165,7 +160,7 @@
             "Properties": {
                 "Parameters": {
                     "CodeBuildProject": "ghost-clair-build",
-                    "CodeCommitRepo": "ghost-ecs-fargate",
+                    "CodeCommitRepo": "ghost-ecs-fargate-pipeline",
                     "ECSClusterName": "Ghost",
                     "ECSServiceName": {
                         "Fn::GetAtt": [
@@ -174,7 +169,7 @@
                         ]
                     }
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/ghost-container-build-clair-pipeline.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
@@ -247,15 +242,42 @@
                         ]
                     }
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/fargate_deploy.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-deploy-fargate.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "GhostInitCodeCommitStack": {
+            "Properties": {
+                "Parameters": {
+                    "CodeCommitRepoAddr": {
+                        "Fn::GetAtt": [
+                            "GhostRepo",
+                            "CloneUrlHttp"
+                        ]
+                    }
+                },
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
         "GhostRepo": {
             "Properties": {
-                "RepositoryName": "ghost-ecs-fargate"
+                "RepositoryName": "ghost-ecs-fargate-pipeline"
             },
             "Type": "AWS::CodeCommit::Repository"
+        },
+        "InitDBLambdaBuild": {
+            "Properties": {
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/init-db-lambda-build.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
+        },
+        "InitDBLambdaInit": {
+            "DependsOn": "InitDBLambdaBuild",
+            "Properties": {
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/init-db-lambda-init.template"
+            },
+            "Type": "AWS::CloudFormation::Stack"
         },
         "VPCStack": {
             "Properties": {
@@ -280,7 +302,7 @@
                     },
                     "NumberOfAZs": "2"
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate/vpc.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/vpc.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         }

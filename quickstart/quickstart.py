@@ -34,13 +34,6 @@ key_admin_ARN = t.add_parameter(Parameter(
     Description='The ARN for the User/Role that can manage the RDS KMS key (e.g. arn:aws:iam::111122223333:root)',
 ))
 
-cr_s3_bucket = t.add_parameter(Parameter(
-    "CRS3Bucket",
-    Default="ghost-ecs-fargate-pipeline",
-    Description="The S3 Bucket that the init_db_lambda.zip for the Custom Resource is located in",
-    Type="String"
-))
-
 # Create the ECS Cluster
 ECSCluster = t.add_resource(ecs.Cluster(
     "ECSCluster",
@@ -54,6 +47,17 @@ GhostRepo = t.add_resource(codecommit.Repository(
 ))
 
 # Create each required stack
+
+init_db_lambda_build = t.add_resource(cloudformation.Stack(
+    "InitDBLambdaBuild",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/init-db-lambda-build.template",
+))
+
+init_db_lambda_init = t.add_resource(cloudformation.Stack(
+    "InitDBLambdaInit",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/init-db-lambda-init.template",
+    DependsOn='InitDBLambdaBuild'
+))
 
 vpc_stack = t.add_resource(cloudformation.Stack(
     "VPCStack",
@@ -81,9 +85,10 @@ dependencies_stack = t.add_resource(cloudformation.Stack(
         'DBPassword': Ref(db_password),
         'DBMultiAZ': 'False',
         'KeyAdminARN': Ref(key_admin_ARN),
-        'CRS3Bucket' : Ref(cr_s3_bucket)
+        'CRS3Bucket' : GetAtt(init_db_lambda_build, "Outputs.OutputBucket"),
     },
     TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/dependencies.template",
+    DependsOn='InitDBLambdaInit'
 ))
 
 ghost_fargate_stack = t.add_resource(cloudformation.Stack(
