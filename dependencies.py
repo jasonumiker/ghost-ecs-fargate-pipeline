@@ -344,7 +344,8 @@ DBInitFunction = t.add_resource(awslambda.Function(
     VpcConfig=awslambda.VPCConfig(
         SecurityGroupIds=[Ref(ghost_host_security_group)],
         SubnetIds=[Ref(db_subnet), Ref(db_subnet2)]
-    )
+    ),
+    DependsOn=LambdaExecutionPolicy
 ))
 
 # Add the application ELB

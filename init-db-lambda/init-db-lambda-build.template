@@ -68,7 +68,7 @@
             "Type": "AWS::IAM::Policy"
         },
         "ImageBuildProject": {
-            "DependsOn": "CodeBuildServiceRolePolicy",
+            "DependsOn": "InstanceRole",
             "Properties": {
                 "Artifacts": {
                     "Location": {

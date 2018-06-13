@@ -140,12 +140,14 @@ CodeBuildInitFunction = t.add_resource(awslambda.Function(
     Runtime="python3.6",
     MemorySize="128",
     Timeout="180",
+    DependsOn=LambdaPolicy
 ))
 
 CodeBuildInit = t.add_resource(CustomCodeBuildTrigger(
     "CodeBuildInit",
     ServiceToken=GetAtt(CodeBuildInitFunction, 'Arn'),
     ProjectName="init-db-lambda-build",
+    DependsOn=CodeBuildInitFunction
 ))
 
 print(t.to_json())

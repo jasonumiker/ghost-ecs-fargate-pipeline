@@ -399,6 +399,7 @@
             "Type": "AWS::ElasticLoadBalancingV2::TargetGroup"
         },
         "InitDBFunction": {
+            "DependsOn": "LambdaExecutionPolicy",
             "Properties": {
                 "Code": {
                     "S3Bucket": {

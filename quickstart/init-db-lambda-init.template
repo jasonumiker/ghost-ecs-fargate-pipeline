@@ -1,6 +1,7 @@
 {
     "Resources": {
         "CodeBuildInit": {
+            "DependsOn": "CodeBuildInitFunction",
             "Properties": {
                 "ProjectName": "init-db-lambda-build",
                 "ServiceToken": {
@@ -13,6 +14,7 @@
             "Type": "Custom::CodeBuildTrigger"
         },
         "CodeBuildInitFunction": {
+            "DependsOn": "LambdaPolicy",
             "Properties": {
                 "Code": {
                     "ZipFile": {

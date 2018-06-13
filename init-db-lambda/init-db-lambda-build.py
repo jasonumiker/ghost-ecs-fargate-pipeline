@@ -109,7 +109,7 @@ ImageProject = codebuild.Project(
     Name="init-db-lambda-build",
     ServiceRole=Ref(ServiceRole),
     Source=ImageSource,
-    DependsOn=CodeBuildServiceRolePolicy
+    DependsOn=ServiceRole
 )
 t.add_resource(ImageProject)
 

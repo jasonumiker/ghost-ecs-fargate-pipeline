@@ -69,11 +69,6 @@ vpc_stack = t.add_resource(cloudformation.Stack(
     TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/vpc.template",
 ))
 
-ecs_roles_stack = t.add_resource(cloudformation.Stack(
-    "ECSRolesStack",
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ecs-roles.template",
-))
-
 dependencies_stack = t.add_resource(cloudformation.Stack(
     "DepdendenciesStack",
     Parameters={
@@ -118,7 +113,8 @@ clair_fargate_stack = t.add_resource(cloudformation.Stack(
         'ClairSubnet': GetAtt(vpc_stack, "Outputs.PrivateSubnet1AID"),
         'ClairSubnet2': GetAtt(vpc_stack, "Outputs.PrivateSubnet2AID"),
         'ClairVPC': GetAtt(vpc_stack, "Outputs.VPCID"),
-        'ClairImage': "jasonumiker/clair:latest"
+        'ClairImage': "jasonumiker/clair:latest",
+        'ClairDBPassword': Ref(db_password)
     },
     TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/clair-deploy-fargate.template",
 ))
@@ -131,7 +127,7 @@ ghost_container_build_stack = t.add_resource(cloudformation.Stack(
         'BuildVPC': GetAtt(vpc_stack, "Outputs.VPCID"),
         'ClairURL': GetAtt(clair_fargate_stack, "Outputs.ClairURL"),
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build.template",
 ))
 
 ghost_container_pipeline_stack = t.add_resource(cloudformation.Stack(
@@ -145,10 +141,10 @@ ghost_container_pipeline_stack = t.add_resource(cloudformation.Stack(
     TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template",
 ))
 
-ghost_init_codecommit_stack = t.add_resource(cloudformation.Stack(
-    "GhostInitCodeCommitStack",
+init_codecommit_stack = t.add_resource(cloudformation.Stack(
+    "InitCodeCommitStack",
     Parameters={'CodeCommitRepoAddr': GetAtt(GhostRepo, "CloneUrlHttp")},
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/init-codecommit.template",
 ))
 
 # Output the ALB URL

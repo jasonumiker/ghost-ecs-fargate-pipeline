@@ -35,6 +35,9 @@
         "ClairFargateStack": {
             "Properties": {
                 "Parameters": {
+                    "ClairDBPassword": {
+                        "Ref": "DBPassword"
+                    },
                     "ClairImage": "jasonumiker/clair:latest",
                     "ClairSubnet": {
                         "Fn::GetAtt": [
@@ -118,12 +121,6 @@
             },
             "Type": "AWS::ECS::Cluster"
         },
-        "ECSRolesStack": {
-            "Properties": {
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ecs-roles.template"
-            },
-            "Type": "AWS::CloudFormation::Stack"
-        },
         "GhostContainerBuildStack": {
             "Properties": {
                 "Parameters": {
@@ -152,7 +149,7 @@
                         ]
                     }
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
@@ -246,7 +243,13 @@
             },
             "Type": "AWS::CloudFormation::Stack"
         },
-        "GhostInitCodeCommitStack": {
+        "GhostRepo": {
+            "Properties": {
+                "RepositoryName": "ghost-ecs-fargate-pipeline"
+            },
+            "Type": "AWS::CodeCommit::Repository"
+        },
+        "InitCodeCommitStack": {
             "Properties": {
                 "Parameters": {
                     "CodeCommitRepoAddr": {
@@ -256,15 +259,9 @@
                         ]
                     }
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/init-codecommit.template"
             },
             "Type": "AWS::CloudFormation::Stack"
-        },
-        "GhostRepo": {
-            "Properties": {
-                "RepositoryName": "ghost-ecs-fargate-pipeline"
-            },
-            "Type": "AWS::CodeCommit::Repository"
         },
         "InitDBLambdaBuild": {
             "Properties": {
