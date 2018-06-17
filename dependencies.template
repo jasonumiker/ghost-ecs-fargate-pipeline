@@ -405,7 +405,7 @@
                     "S3Bucket": {
                         "Ref": "CRS3Bucket"
                     },
-                    "S3Key": "init_db_lambda.zip"
+                    "S3Key": "init-db-lambda.zip"
                 },
                 "Environment": {
                     "Variables": {
@@ -425,7 +425,7 @@
                         "dbuser": "root"
                     }
                 },
-                "Handler": "init_db_lambda.handler",
+                "Handler": "init-db-lambda.handler",
                 "MemorySize": 128,
                 "Role": {
                     "Fn::GetAtt": [

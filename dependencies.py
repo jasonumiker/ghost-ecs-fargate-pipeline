@@ -325,7 +325,7 @@ DBInitFunction = t.add_resource(awslambda.Function(
     "InitDBFunction",
     Code=awslambda.Code(
         S3Bucket=Ref(cr_s3_bucket),
-        S3Key="init_db_lambda.zip"
+        S3Key="init-db-lambda.zip"
     ),
     Handler="init-db-lambda.handler",
     Role=GetAtt("LambdaExecutionRole", "Arn"),
