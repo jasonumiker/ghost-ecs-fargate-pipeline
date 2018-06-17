@@ -21,4 +21,4 @@ phases:
     commands:
       - echo Build completed on `date`
       - echo Uploading to S3
-      - aws s3 cp init_db_lambda.zip s3://$S3BUCKET/
+      - aws s3 cp init-db-lambda.zip s3://$S3BUCKET/
