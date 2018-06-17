@@ -327,7 +327,7 @@ DBInitFunction = t.add_resource(awslambda.Function(
         S3Bucket=Ref(cr_s3_bucket),
         S3Key="init_db_lambda.zip"
     ),
-    Handler="init_db_lambda.handler",
+    Handler="init-db-lambda.handler",
     Role=GetAtt("LambdaExecutionRole", "Arn"),
     Runtime="python2.7",
     MemorySize="128",

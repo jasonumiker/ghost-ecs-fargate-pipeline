@@ -16,7 +16,7 @@ phases:
       - cd init-db-lambda
       - pip install pymysql -t .
       - pip install boto3 -t .
-      - zip -r init_db_lambda.zip .
+      - zip -r init-db-lambda.zip .
   post_build:
     commands:
       - echo Build completed on `date`
