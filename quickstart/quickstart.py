@@ -138,7 +138,7 @@ ghost_container_pipeline_stack = t.add_resource(cloudformation.Stack(
         'ECSClusterName': "Ghost",
         'ECSServiceName': GetAtt(ghost_fargate_stack, "Outputs.GhostFargateServiceName"),
     },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template",
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-pipeline.template",
 ))
 
 init_codecommit_stack = t.add_resource(cloudformation.Stack(

@@ -166,7 +166,7 @@
                         ]
                     }
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-clair-pipeline.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-pipeline.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },
