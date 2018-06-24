@@ -38,6 +38,6 @@ phases:
       - echo Running Clair scan on the image
       - DOCKER_USER=AWS DOCKER_PASSWORD=${PASSWORD} CLAIR_ADDR=$CLAIR_URL ../klar $IMAGE_URI
       - printf '[{"name":"ghost","imageUri":"%s"}]' "$IMAGE_URI" > ../images.json
+      - printf '[{}]
 artifacts:
-  files: images.json
-  files: ghost-deploy-fargate.template
+  files: images.json ghost-deploy-fargate.template
