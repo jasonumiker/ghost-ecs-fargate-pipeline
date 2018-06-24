@@ -127,6 +127,16 @@ init_codecommit_stack = t.add_resource(cloudformation.Stack(
     TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/init-codecommit.template",
 ))
 
+cloud9_stack = t.add_resource(cloudformation.Stack(
+    "Cloud9Stack",
+    Parameters={
+        'Subnet': GetAtt(vpc_stack, "Outputs.PublicSubnet1ID"),
+        'CodeCommitRepoUrl': GetAtt(GhostRepo, "CloneUrlHttp")
+    },
+    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/cloud9.template",
+    DependsOn='InitCodeCommitStack'
+))
+
 # Output the ALB URL
 t.add_output(Output(
     "ALBURL",

@@ -40,7 +40,7 @@ build_subnet2 = t.add_parameter(Parameter(
 Repository = t.add_resource(
     ecr.Repository(
         "Repository",
-        RepositoryName="ghost-clair"
+        RepositoryName="ghost"
     )
 )
 

@@ -257,7 +257,7 @@
         },
         "Repository": {
             "Properties": {
-                "RepositoryName": "ghost-clair"
+                "RepositoryName": "ghost"
             },
             "Type": "AWS::ECR::Repository"
         }

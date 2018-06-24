@@ -64,7 +64,6 @@
             "Type": "AWS::CloudFormation::Stack"
         },
         "Cloud9Stack": {
-            "DependsOn": "InitCodeCommitStack",
             "Properties": {
                 "Parameters": {
                     "CodeCommitRepoUrl": {
