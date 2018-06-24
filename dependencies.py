@@ -1,7 +1,7 @@
 # Troposphere to create CloudFormation template for base dependencies
 # By Jason Umiker (jason.umiker@gmail.com)
 
-from troposphere import Template, Ref, Output, GetAtt, \
+from troposphere import Template, Ref, Output, GetAtt, Export, Sub, \
     Parameter, Join, iam, logs, ec2, rds, elasticloadbalancingv2, \
     awslambda, cloudformation, kms
 
@@ -396,49 +396,56 @@ dbinit = t.add_resource(CustomDBInit(
 t.add_output(Output(
     "TaskRoleArn",
     Value=GetAtt(TaskRole, "Arn"),
-    Description="Task Role Arn"
+    Description="Task Role Arn",
+    Export=Export(Sub("${AWS::StackName}-TaskRoleArn"))
 ))
 
 # Output the Task Execution Role Arn
 t.add_output(Output(
     "TaskExecutionRoleArn",
     Value=GetAtt(TaskExecutionRole, "Arn"),
-    Description="Task Execution Role Arn"
+    Description="Task Execution Role Arn",
+    Export = Export(Sub("${AWS::StackName}-TaskExecutionRoleArn"))
 ))
 
 # Output the Log Group name
 t.add_output(Output(
     "GhostLogGroupName",
     Value=Ref(GhostLogGroup),
-    Description="Name of Ghost Log Group"
+    Description="Name of Ghost Log Group",
+    Export=Export(Sub("${AWS::StackName}-GhostLogGroupName"))
 ))
 
 # Output the host / fargate security group ID
 t.add_output(Output(
     "GhostSG",
     Value=GetAtt(ghost_host_security_group, 'GroupId'),
-    Description="ID of the Ghost Security Group"
+    Description="ID of the Ghost Security Group",
+    Export=Export(Sub("${AWS::StackName}-GhostSG"))
 ))
 
 # Output the db hostname
 t.add_output(Output(
     "GhostDBHost",
     Value=GetAtt(ghost_db, 'Endpoint.Address'),
-    Description="FQDN of the Ghost DB."
+    Description="FQDN of the Ghost DB.",
+    Export=Export(Sub("${AWS::StackName}-GhostDBHost"))
 ))
 
 # Output the Target Group ARN
 t.add_output(Output(
     "GhostTG",
     Description="ARN of the Ghost Target Group",
-    Value=Ref(GhostTargetGroup)
+    Value=Ref(GhostTargetGroup),
+    Export=Export(Sub("${AWS::StackName}-GhostTG"))
 ))
 
 # Output the ALB URL
 t.add_output(Output(
     "ALBURL",
     Description="URL of the ALB",
-    Value=Join("", ["http://", GetAtt(GhostALB, "DNSName")])
+    Value=Join("", ["http://", GetAtt(GhostALB, "DNSName")]),
+    Export=Export(Sub("${AWS::StackName}-ALBURL"))
 ))
 
 # Output the Target Group Name
@@ -446,6 +453,31 @@ t.add_output(Output(
     "ALBTGNAME",
     Description="Name of the ALB Target Group",
     Value=GetAtt(GhostTargetGroup, 'TargetGroupName'),
+    Export=Export(Sub("${AWS::StackName}-ALBTGNAME"))
+))
+
+# Output Subnet 1
+t.add_output(Output(
+    "Subnet1",
+    Description="ID of the first Subnet to use",
+    Value=Ref(db_subnet),
+    Export=Export(Sub("${AWS::StackName}-Subnet1"))
+))
+
+# Output Subnet 2
+t.add_output(Output(
+    "Subnet2",
+    Description="ID of the first Subnet to use",
+    Value=Ref(db_subnet2),
+    Export=Export(Sub("${AWS::StackName}-Subnet2"))
+))
+
+# Output Stack Name
+t.add_output(Output(
+    "StackName",
+    Description="Name of this Stack",
+    Value=Ref("AWS::StackName"),
+    Export=Export(Sub("${AWS::StackName}-StackName"))
 ))
 
 print(t.to_json())

@@ -3,6 +3,11 @@
     "Outputs": {
         "ALBTGNAME": {
             "Description": "Name of the ALB Target Group",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ALBTGNAME"
+                }
+            },
             "Value": {
                 "Fn::GetAtt": [
                     "GhostTargetGroup",
@@ -12,6 +17,11 @@
         },
         "ALBURL": {
             "Description": "URL of the ALB",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-ALBURL"
+                }
+            },
             "Value": {
                 "Fn::Join": [
                     "",
@@ -29,6 +39,11 @@
         },
         "GhostDBHost": {
             "Description": "FQDN of the Ghost DB.",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-GhostDBHost"
+                }
+            },
             "Value": {
                 "Fn::GetAtt": [
                     "GhostDB",
@@ -38,12 +53,22 @@
         },
         "GhostLogGroupName": {
             "Description": "Name of Ghost Log Group",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-GhostLogGroupName"
+                }
+            },
             "Value": {
                 "Ref": "GhostLogGroup"
             }
         },
         "GhostSG": {
             "Description": "ID of the Ghost Security Group",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-GhostSG"
+                }
+            },
             "Value": {
                 "Fn::GetAtt": [
                     "GhostHostSecurityGroup",
@@ -53,12 +78,55 @@
         },
         "GhostTG": {
             "Description": "ARN of the Ghost Target Group",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-GhostTG"
+                }
+            },
             "Value": {
                 "Ref": "GhostTargetGroup"
             }
         },
+        "StackName": {
+            "Description": "Name of this Stack",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-StackName"
+                }
+            },
+            "Value": {
+                "Ref": "AWS::StackName"
+            }
+        },
+        "Subnet1": {
+            "Description": "ID of the first Subnet to use",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-Subnet1"
+                }
+            },
+            "Value": {
+                "Ref": "DBSubnet"
+            }
+        },
+        "Subnet2": {
+            "Description": "ID of the first Subnet to use",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-Subnet2"
+                }
+            },
+            "Value": {
+                "Ref": "DBSubnet2"
+            }
+        },
         "TaskExecutionRoleArn": {
             "Description": "Task Execution Role Arn",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-TaskExecutionRoleArn"
+                }
+            },
             "Value": {
                 "Fn::GetAtt": [
                     "TaskExecutionRole",
@@ -68,6 +136,11 @@
         },
         "TaskRoleArn": {
             "Description": "Task Role Arn",
+            "Export": {
+                "Name": {
+                    "Fn::Sub": "${AWS::StackName}-TaskRoleArn"
+                }
+            },
             "Value": {
                 "Fn::GetAtt": [
                     "TaskRole",

@@ -1,7 +1,7 @@
 # Troposphere to create CloudFormation template of ghost ECS deployment
 # By Jason Umiker (jason.umiker@gmail.com)
 
-from troposphere import Parameter, Ref, Template, Output, GetAtt
+from troposphere import Parameter, Ref, Template, Output, GetAtt, ImportValue, Sub
 from troposphere.ecs import (
     Service, TaskDefinition, LoadBalancer,
     ContainerDefinition, NetworkConfiguration,
@@ -26,64 +26,10 @@ ghost_image = t.add_parameter(Parameter(
     Description='The Ghost container image to deploy.',
 ))
 
-task_role_arn = t.add_parameter(Parameter(
-    'TaskRoleARN',
+dependency_stack_name = t.add_parameter(Parameter(
+    'DependencyStackName',
     Type='String',
-    Description='The ARN of the role for the task.',
-))
-
-execution_role_arn = t.add_parameter(Parameter(
-    'ExecutionRoleARN',
-    Type='String',
-    Description='The ARN of the execution role for the task.',
-))
-
-ghost_lb_target_arn = t.add_parameter(Parameter(
-    'GhostLBTargetARN',
-    Type='String',
-    Description='The ARN of the ALB Target Group for Ghost.',
-))
-
-ghost_vpc = t.add_parameter(Parameter(
-    'GhostVPC',
-    Type='AWS::EC2::VPC::Id',
-    Description='A VPC subnet ID for the container.',
-))
-
-ghost_subnet = t.add_parameter(Parameter(
-    'GhostSubnet',
-    Type='AWS::EC2::Subnet::Id',
-    Description='A VPC subnet ID for the container.',
-))
-
-ghost_subnet2 = t.add_parameter(Parameter(
-    'GhostSubnet2',
-    Type='AWS::EC2::Subnet::Id',
-    Description='A 2nd VPC subnet ID for the container.',
-))
-
-ghost_loggroup = t.add_parameter(Parameter(
-    'GhostLogGroup',
-    Type='String',
-    Description='The Name of the Log Group to log to.',
-))
-
-ghost_securitygroup = t.add_parameter(Parameter(
-    'GhostSecurityGroup',
-    Type='AWS::EC2::SecurityGroup::Id',
-    Description='The ID of the Security Group for the Tasks.',
-))
-
-ghost_dbhost = t.add_parameter(Parameter(
-    'GhostDBHost',
-    Type='String',
-    Description='The FQDN of the Database.',
-))
-
-ghost_url = t.add_parameter(Parameter(
-    'GhostURL',
-    Type='String',
-    Description='The URL of the service (e.g. https://ghost.example.com).',
+    Description='The name of the Dependency Stack to retrieve CloudFormation Exports',
 ))
 
 # Create the Resources
@@ -94,8 +40,8 @@ ghost_task_definition = t.add_resource(TaskDefinition(
     Cpu='512',
     Memory='1GB',
     NetworkMode='awsvpc',
-    TaskRoleArn=Ref(task_role_arn),
-    ExecutionRoleArn=Ref(execution_role_arn),
+    TaskRoleArn=ImportValue(Sub("${DependencyStackName}-TaskRoleArn")),
+    ExecutionRoleArn=ImportValue(Sub("${DependencyStackName}-TaskExecutionRoleArn")),
     ContainerDefinitions=[
         ContainerDefinition(
             Name='ghost',
@@ -105,7 +51,7 @@ ghost_task_definition = t.add_resource(TaskDefinition(
             Environment=[
                 Environment(
                     Name='url',
-                    Value=Ref(ghost_url)
+                    Value=ImportValue(Sub("${DependencyStackName}-ALBURL")),
                 ),
                 Environment(
                     Name='database__client',
@@ -113,7 +59,7 @@ ghost_task_definition = t.add_resource(TaskDefinition(
                 ),
                 Environment(
                     Name='database__connection__host',
-                    Value=Ref(ghost_dbhost)
+                    Value=ImportValue(Sub("${DependencyStackName}-GhostDBHost")),
                 ),
                 Environment(
                     Name='database__connection__user',
@@ -130,7 +76,7 @@ ghost_task_definition = t.add_resource(TaskDefinition(
             ],
             LogConfiguration=LogConfiguration(
                 LogDriver='awslogs',
-                Options={'awslogs-group': Ref(ghost_loggroup),
+                Options={'awslogs-group': ImportValue(Sub("${DependencyStackName}-GhostLogGroupName")),
                          'awslogs-region': Ref('AWS::Region'),
                          'awslogs-stream-prefix': 'ghost'}
             )
@@ -148,13 +94,13 @@ ghost_service = t.add_resource(Service(
         LoadBalancer(
             ContainerName='ghost',
             ContainerPort=2368,
-            TargetGroupArn=Ref(ghost_lb_target_arn)
+            TargetGroupArn=ImportValue(Sub("${DependencyStackName}-GhostTG"))
         )
     ],
     NetworkConfiguration=NetworkConfiguration(
         AwsvpcConfiguration=AwsvpcConfiguration(
-            Subnets=[Ref(ghost_subnet), Ref(ghost_subnet2)],
-            SecurityGroups=[Ref(ghost_securitygroup)],
+            Subnets=[ImportValue(Sub("${DependencyStackName}-Subnet1")), ImportValue(Sub("${DependencyStackName}-Subnet2"))],
+            SecurityGroups=[ImportValue(Sub("${DependencyStackName}-GhostSG"))],
         )
     )
 ))

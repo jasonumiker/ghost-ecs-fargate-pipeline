@@ -175,68 +175,14 @@
             "Properties": {
                 "Parameters": {
                     "Cluster": "Ghost",
-                    "ExecutionRoleARN": {
+                    "DependencyStackName": {
                         "Fn::GetAtt": [
                             "DepdendenciesStack",
-                            "Outputs.TaskExecutionRoleArn"
-                        ]
-                    },
-                    "GhostDBHost": {
-                        "Fn::GetAtt": [
-                            "DepdendenciesStack",
-                            "Outputs.GhostDBHost"
+                            "Outputs.StackName"
                         ]
                     },
                     "GhostImage": {
                         "Ref": "GhostImage"
-                    },
-                    "GhostLBTargetARN": {
-                        "Fn::GetAtt": [
-                            "DepdendenciesStack",
-                            "Outputs.GhostTG"
-                        ]
-                    },
-                    "GhostLogGroup": {
-                        "Fn::GetAtt": [
-                            "DepdendenciesStack",
-                            "Outputs.GhostLogGroupName"
-                        ]
-                    },
-                    "GhostSecurityGroup": {
-                        "Fn::GetAtt": [
-                            "DepdendenciesStack",
-                            "Outputs.GhostSG"
-                        ]
-                    },
-                    "GhostSubnet": {
-                        "Fn::GetAtt": [
-                            "VPCStack",
-                            "Outputs.PrivateSubnet1AID"
-                        ]
-                    },
-                    "GhostSubnet2": {
-                        "Fn::GetAtt": [
-                            "VPCStack",
-                            "Outputs.PrivateSubnet2AID"
-                        ]
-                    },
-                    "GhostURL": {
-                        "Fn::GetAtt": [
-                            "DepdendenciesStack",
-                            "Outputs.ALBURL"
-                        ]
-                    },
-                    "GhostVPC": {
-                        "Fn::GetAtt": [
-                            "VPCStack",
-                            "Outputs.VPCID"
-                        ]
-                    },
-                    "TaskRoleARN": {
-                        "Fn::GetAtt": [
-                            "DepdendenciesStack",
-                            "Outputs.TaskRoleArn"
-                        ]
                     }
                 },
                 "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-deploy-fargate.template"

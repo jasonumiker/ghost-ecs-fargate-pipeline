@@ -16,48 +16,12 @@
             "Description": "The ECS Cluster to deploy to.",
             "Type": "String"
         },
-        "ExecutionRoleARN": {
-            "Description": "The ARN of the execution role for the task.",
-            "Type": "String"
-        },
-        "GhostDBHost": {
-            "Description": "The FQDN of the Database.",
+        "DependencyStackName": {
+            "Description": "The name of the Dependency Stack to retrieve CloudFormation Exports",
             "Type": "String"
         },
         "GhostImage": {
             "Description": "The Ghost container image to deploy.",
-            "Type": "String"
-        },
-        "GhostLBTargetARN": {
-            "Description": "The ARN of the ALB Target Group for Ghost.",
-            "Type": "String"
-        },
-        "GhostLogGroup": {
-            "Description": "The Name of the Log Group to log to.",
-            "Type": "String"
-        },
-        "GhostSecurityGroup": {
-            "Description": "The ID of the Security Group for the Tasks.",
-            "Type": "AWS::EC2::SecurityGroup::Id"
-        },
-        "GhostSubnet": {
-            "Description": "A VPC subnet ID for the container.",
-            "Type": "AWS::EC2::Subnet::Id"
-        },
-        "GhostSubnet2": {
-            "Description": "A 2nd VPC subnet ID for the container.",
-            "Type": "AWS::EC2::Subnet::Id"
-        },
-        "GhostURL": {
-            "Description": "The URL of the service (e.g. https://ghost.example.com).",
-            "Type": "String"
-        },
-        "GhostVPC": {
-            "Description": "A VPC subnet ID for the container.",
-            "Type": "AWS::EC2::VPC::Id"
-        },
-        "TaskRoleARN": {
-            "Description": "The ARN of the role for the task.",
             "Type": "String"
         }
     },
@@ -74,7 +38,9 @@
                         "ContainerName": "ghost",
                         "ContainerPort": 2368,
                         "TargetGroupArn": {
-                            "Ref": "GhostLBTargetARN"
+                            "Fn::ImportValue": {
+                                "Fn::Sub": "${DependencyStackName}-GhostTG"
+                            }
                         }
                     }
                 ],
@@ -82,15 +48,21 @@
                     "AwsvpcConfiguration": {
                         "SecurityGroups": [
                             {
-                                "Ref": "GhostSecurityGroup"
+                                "Fn::ImportValue": {
+                                    "Fn::Sub": "${DependencyStackName}-GhostSG"
+                                }
                             }
                         ],
                         "Subnets": [
                             {
-                                "Ref": "GhostSubnet"
+                                "Fn::ImportValue": {
+                                    "Fn::Sub": "${DependencyStackName}-Subnet1"
+                                }
                             },
                             {
-                                "Ref": "GhostSubnet2"
+                                "Fn::ImportValue": {
+                                    "Fn::Sub": "${DependencyStackName}-Subnet2"
+                                }
                             }
                         ]
                     }
@@ -109,7 +81,9 @@
                             {
                                 "Name": "url",
                                 "Value": {
-                                    "Ref": "GhostURL"
+                                    "Fn::ImportValue": {
+                                        "Fn::Sub": "${DependencyStackName}-ALBURL"
+                                    }
                                 }
                             },
                             {
@@ -119,7 +93,9 @@
                             {
                                 "Name": "database__connection__host",
                                 "Value": {
-                                    "Ref": "GhostDBHost"
+                                    "Fn::ImportValue": {
+                                        "Fn::Sub": "${DependencyStackName}-GhostDBHost"
+                                    }
                                 }
                             },
                             {
@@ -145,7 +121,9 @@
                             "LogDriver": "awslogs",
                             "Options": {
                                 "awslogs-group": {
-                                    "Ref": "GhostLogGroup"
+                                    "Fn::ImportValue": {
+                                        "Fn::Sub": "${DependencyStackName}-GhostLogGroupName"
+                                    }
                                 },
                                 "awslogs-region": {
                                     "Ref": "AWS::Region"
@@ -163,7 +141,9 @@
                 ],
                 "Cpu": "512",
                 "ExecutionRoleArn": {
-                    "Ref": "ExecutionRoleARN"
+                    "Fn::ImportValue": {
+                        "Fn::Sub": "${DependencyStackName}-TaskExecutionRoleArn"
+                    }
                 },
                 "Memory": "1GB",
                 "NetworkMode": "awsvpc",
@@ -171,7 +151,9 @@
                     "FARGATE"
                 ],
                 "TaskRoleArn": {
-                    "Ref": "TaskRoleARN"
+                    "Fn::ImportValue": {
+                        "Fn::Sub": "${DependencyStackName}-TaskRoleArn"
+                    }
                 }
             },
             "Type": "AWS::ECS::TaskDefinition"

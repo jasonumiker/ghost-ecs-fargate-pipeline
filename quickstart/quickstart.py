@@ -91,16 +91,7 @@ ghost_fargate_stack = t.add_resource(cloudformation.Stack(
     Parameters={
         'Cluster': "Ghost",
         'GhostImage': Ref(ghost_image),
-        'TaskRoleARN': GetAtt(dependencies_stack, "Outputs.TaskRoleArn"),
-        'ExecutionRoleARN': GetAtt(dependencies_stack, "Outputs.TaskExecutionRoleArn"),
-        'GhostLBTargetARN': GetAtt(dependencies_stack, "Outputs.GhostTG"),
-        'GhostVPC': GetAtt(vpc_stack, "Outputs.VPCID"),
-        'GhostSubnet': GetAtt(vpc_stack, "Outputs.PrivateSubnet1AID"),
-        'GhostSubnet2': GetAtt(vpc_stack, "Outputs.PrivateSubnet2AID"),
-        'GhostLogGroup': GetAtt(dependencies_stack, "Outputs.GhostLogGroupName"),
-        'GhostSecurityGroup': GetAtt(dependencies_stack, "Outputs.GhostSG"),
-        'GhostDBHost': GetAtt(dependencies_stack, "Outputs.GhostDBHost"),
-        'GhostURL': GetAtt(dependencies_stack, "Outputs.ALBURL"),
+        'DependencyStackName': GetAtt(dependencies_stack, "Outputs.StackName"),
     },
     TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-deploy-fargate.template",
     DependsOn='DepdendenciesStack'
