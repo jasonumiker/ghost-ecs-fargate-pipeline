@@ -158,34 +158,15 @@
                 "Parameters": {
                     "CodeBuildProject": "ghost-clair-build",
                     "CodeCommitRepo": "ghost-ecs-fargate-pipeline",
-                    "ECSClusterName": "Ghost",
-                    "ECSServiceName": {
-                        "Fn::GetAtt": [
-                            "GhostFargateStack",
-                            "Outputs.GhostFargateServiceName"
-                        ]
-                    }
-                },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-pipeline.template"
-            },
-            "Type": "AWS::CloudFormation::Stack"
-        },
-        "GhostFargateStack": {
-            "DependsOn": "DepdendenciesStack",
-            "Properties": {
-                "Parameters": {
-                    "Cluster": "Ghost",
                     "DependencyStackName": {
                         "Fn::GetAtt": [
                             "DepdendenciesStack",
                             "Outputs.StackName"
                         ]
                     },
-                    "GhostImage": {
-                        "Ref": "GhostImage"
-                    }
+                    "ECSClusterName": "Ghost"
                 },
-                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-deploy-fargate.template"
+                "TemplateURL": "https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-pipeline.template"
             },
             "Type": "AWS::CloudFormation::Stack"
         },

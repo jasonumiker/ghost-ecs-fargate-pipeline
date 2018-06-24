@@ -40,3 +40,4 @@ phases:
       - printf '[{"name":"ghost","imageUri":"%s"}]' "$IMAGE_URI" > ../images.json
 artifacts:
   files: images.json
+  files: ghost-deploy-fargate.template

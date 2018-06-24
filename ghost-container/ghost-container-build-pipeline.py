@@ -1,7 +1,7 @@
 # Template to create CodePipeline for Ghost
 # By Jason Umiker (jason.umiker@gmail.com)
 
-from troposphere import Parameter, Ref, Template, GetAtt, Output, Join
+from troposphere import Parameter, Ref, Template, GetAtt, Join
 from troposphere.codepipeline import (
     Pipeline, Stages, Actions, ActionTypeId, OutputArtifacts, InputArtifacts,
     ArtifactStore)
@@ -27,14 +27,14 @@ CodeBuildProject = t.add_parameter(Parameter(
 
 ECSClusterName = t.add_parameter(Parameter(
     "ECSClusterName",
-    Description="The ECS Cluster to Update",
+    Description="The name of the ECS Cluster to pass to the deployment stack",
     Default='Ghost',
     Type="String"
 ))
 
-ECSServiceName = t.add_parameter(Parameter(
-    "ECSServiceName",
-    Description="The ECS Service to Update",
+DependencyStackName = t.add_parameter(Parameter(
+    "DependencyStackName",
+    Description="The name of the Dependency Stack",
     Type="String"
 ))
 
@@ -123,10 +123,66 @@ CodePipelineServicePolicy = t.add_resource(iam.PolicyType(
                 "Resource": [
                     Join("", ["arn:aws:s3:::", Ref(CodePipelineBucket), "/*"]),
                 ]
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "cloudformation:CreateStack",
+                    "cloudformation:DeleteStack",
+                    "cloudformation:DescribeStacks",
+                    "cloudformation:UpdateStack",
+                    "cloudformation:CreateChangeSet",
+                    "cloudformation:DeleteChangeSet",
+                    "cloudformation:DescribeChangeSet",
+                    "cloudformation:ExecuteChangeSet",
+                    "cloudformation:SetStackPolicy",
+                    "cloudformation:ValidateTemplate",
+                ],
+                "Resource": "*"
             }
         ]
     },
     Roles = [Ref(CodePipelineServiceRole)],
+))
+
+# Create the CloudFormation IAM Role
+CloudFormationServiceRole = t.add_resource(iam.Role(
+    "CloudFormationServiceRole",
+    AssumeRolePolicyDocument={
+        'Statement': [{
+            'Effect': 'Allow',
+            'Principal': {'Service': ['cloudformation.amazonaws.com']},
+            'Action': ["sts:AssumeRole"]
+        }]},
+))
+
+# Create the Inline policy for the CodePipline Role
+CloudFormationServicePolicy = t.add_resource(iam.PolicyType(
+    "CloudFormationServicePolicy",
+    PolicyName="CloudFormationServicePolicy",
+    PolicyDocument={
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "iam:PassRole",
+                "Resource": "*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "ecs:DescribeTaskDefinition",
+                    "ecs:RegisterTaskDefinition",
+                    "ecs:DescribeServices",
+                    "ecs:UpdateService",
+                    "ecs:DescribeTasks",
+                    "ecs:ListTasks"
+                ],
+                "Resource": "*"
+            },
+        ]
+    },
+    Roles = [Ref(CloudFormationServiceRole)],
 ))
 
 # Create the CloudWatch Events IAM Role
@@ -158,7 +214,7 @@ pipeline = t.add_resource(Pipeline(
                     ),
                     OutputArtifacts=[
                         OutputArtifacts(
-                            Name="MyApp"
+                            Name="SourceOutput"
                         )
                     ],
                     Configuration={
@@ -177,7 +233,7 @@ pipeline = t.add_resource(Pipeline(
                     Name="Build",
                     InputArtifacts=[
                         InputArtifacts(
-                            Name="MyApp"
+                            Name="SourceOutput"
                         )
                     ],
                     ActionTypeId=ActionTypeId(
@@ -188,7 +244,7 @@ pipeline = t.add_resource(Pipeline(
                     ),
                     OutputArtifacts=[
                         OutputArtifacts(
-                            Name="MyAppBuild"
+                            Name="BuildOutput"
                         )
                     ],
                     Configuration={
@@ -199,25 +255,28 @@ pipeline = t.add_resource(Pipeline(
             ]
         ),
         Stages(
-            Name="DevDeploy",
+            Name="Deploy",
             Actions=[
                 Actions(
-                    Name="DevDeploy",
+                    Name="Deploy",
                     InputArtifacts=[
                         InputArtifacts(
-                            Name="MyAppBuild"
+                            Name="BuildOutput"
                         )
                     ],
                     ActionTypeId=ActionTypeId(
                         Category="Deploy",
                         Owner="AWS",
                         Version="1",
-                        Provider="ECS"
+                        Provider="CloudFormation"
                     ),
                     Configuration={
-                        "ClusterName": Ref(ECSClusterName),
-                        "ServiceName": Ref(ECSServiceName),
-                        "FileName": "images.json"
+                        "ActionMode": "REPLACE_ON_FAILURE",
+                        "Capabilities": "CAPABILITY_IAM",
+                        "RoleArn": GetAtt('CloudFormationServiceRole', 'Arn'),
+                        "ParameterOverrides": "{\"Cluster\": Ref(ECSClusterName), \"GhostImage\": {\"Fn::GetParam\" : [\"BuildOutput\",\"images.json\",\"imageUri\"]}, \"DependencyStackName\": Ref(DependencyStackName)}",
+                        "TemplatePath": "BuildOutput::ghost-deploy-fargate.template",
+                        "StackName": "Ghost-Fargate"
                     },
                     RunOrder="1"
                 )
@@ -227,7 +286,8 @@ pipeline = t.add_resource(Pipeline(
     ArtifactStore=ArtifactStore(
         Type="S3",
         Location=Ref(CodePipelineBucket)
-    )
+    ),
+    DependsOn=CloudFormationServicePolicy
 ))
 
 # Create the Inline policy for the CodePipline Role

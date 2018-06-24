@@ -86,17 +86,6 @@ dependencies_stack = t.add_resource(cloudformation.Stack(
     DependsOn='InitDBLambdaInit'
 ))
 
-ghost_fargate_stack = t.add_resource(cloudformation.Stack(
-    "GhostFargateStack",
-    Parameters={
-        'Cluster': "Ghost",
-        'GhostImage': Ref(ghost_image),
-        'DependencyStackName': GetAtt(dependencies_stack, "Outputs.StackName"),
-    },
-    TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-deploy-fargate.template",
-    DependsOn='DepdendenciesStack'
-))
-
 clair_fargate_stack = t.add_resource(cloudformation.Stack(
     "ClairFargateStack",
     Parameters={
@@ -127,7 +116,7 @@ ghost_container_pipeline_stack = t.add_resource(cloudformation.Stack(
         'CodeCommitRepo': "ghost-ecs-fargate-pipeline",
         'CodeBuildProject': "ghost-clair-build",
         'ECSClusterName': "Ghost",
-        'ECSServiceName': GetAtt(ghost_fargate_stack, "Outputs.GhostFargateServiceName"),
+        'DependencyStackName': GetAtt(dependencies_stack, "Outputs.StackName"),
     },
     TemplateURL="https://s3.amazonaws.com/ghost-ecs-fargate-pipeline/ghost-container-build-pipeline.template",
 ))

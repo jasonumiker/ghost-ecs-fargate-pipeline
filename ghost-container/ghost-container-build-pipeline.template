@@ -10,17 +10,70 @@
             "Description": "The name of the CodeCommit Repo to pull from",
             "Type": "String"
         },
-        "ECSClusterName": {
-            "Default": "Ghost",
-            "Description": "The ECS Cluster to Update",
+        "DependencyStackName": {
+            "Description": "The name of the Dependency Stack",
             "Type": "String"
         },
-        "ECSServiceName": {
-            "Description": "The ECS Service to Update",
+        "ECSClusterName": {
+            "Default": "Ghost",
+            "Description": "The name of the ECS Cluster to pass to the deployment stack",
             "Type": "String"
         }
     },
     "Resources": {
+        "CloudFormationServicePolicy": {
+            "Properties": {
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": "iam:PassRole",
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        },
+                        {
+                            "Action": [
+                                "ecs:DescribeTaskDefinition",
+                                "ecs:RegisterTaskDefinition",
+                                "ecs:DescribeServices",
+                                "ecs:UpdateService",
+                                "ecs:DescribeTasks",
+                                "ecs:ListTasks"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*"
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "PolicyName": "CloudFormationServicePolicy",
+                "Roles": [
+                    {
+                        "Ref": "CloudFormationServiceRole"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Policy"
+        },
+        "CloudFormationServiceRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "cloudformation.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "Type": "AWS::IAM::Role"
+        },
         "CloudWatchEventsPolicy": {
             "Properties": {
                 "PolicyDocument": {
@@ -277,6 +330,22 @@
                                     ]
                                 }
                             ]
+                        },
+                        {
+                            "Action": [
+                                "cloudformation:CreateStack",
+                                "cloudformation:DeleteStack",
+                                "cloudformation:DescribeStacks",
+                                "cloudformation:UpdateStack",
+                                "cloudformation:CreateChangeSet",
+                                "cloudformation:DeleteChangeSet",
+                                "cloudformation:DescribeChangeSet",
+                                "cloudformation:ExecuteChangeSet",
+                                "cloudformation:SetStackPolicy",
+                                "cloudformation:ValidateTemplate"
+                            ],
+                            "Effect": "Allow",
+                            "Resource": "*"
                         }
                     ],
                     "Version": "2012-10-17"
@@ -311,6 +380,7 @@
             "Type": "AWS::IAM::Role"
         },
         "GhostPipeline": {
+            "DependsOn": "CloudFormationServicePolicy",
             "Properties": {
                 "ArtifactStore": {
                     "Location": {
@@ -344,7 +414,7 @@
                                 "Name": "Source",
                                 "OutputArtifacts": [
                                     {
-                                        "Name": "MyApp"
+                                        "Name": "SourceOutput"
                                     }
                                 ],
                                 "RunOrder": "1"
@@ -368,13 +438,13 @@
                                 },
                                 "InputArtifacts": [
                                     {
-                                        "Name": "MyApp"
+                                        "Name": "SourceOutput"
                                     }
                                 ],
                                 "Name": "Build",
                                 "OutputArtifacts": [
                                     {
-                                        "Name": "MyAppBuild"
+                                        "Name": "BuildOutput"
                                     }
                                 ],
                                 "RunOrder": "1"
@@ -388,28 +458,32 @@
                                 "ActionTypeId": {
                                     "Category": "Deploy",
                                     "Owner": "AWS",
-                                    "Provider": "ECS",
+                                    "Provider": "CloudFormation",
                                     "Version": "1"
                                 },
                                 "Configuration": {
-                                    "ClusterName": {
-                                        "Ref": "ECSClusterName"
+                                    "ActionMode": "REPLACE_ON_FAILURE",
+                                    "Capabilities": "CAPABILITY_IAM",
+                                    "ParameterOverrides": "{\"Cluster\": Ref(ECSClusterName), \"GhostImage\": {\"Fn::GetParam\" : [\"BuildOutput\",\"images.json\",\"imageUri\"]}, \"DependencyStackName\": Ref(DependencyStackName)}",
+                                    "RoleArn": {
+                                        "Fn::GetAtt": [
+                                            "CloudFormationServiceRole",
+                                            "Arn"
+                                        ]
                                     },
-                                    "FileName": "images.json",
-                                    "ServiceName": {
-                                        "Ref": "ECSServiceName"
-                                    }
+                                    "StackName": "Ghost-Fargate",
+                                    "TemplatePath": "BuildOutput::ghost-deploy-fargate.template"
                                 },
                                 "InputArtifacts": [
                                     {
-                                        "Name": "MyAppBuild"
+                                        "Name": "BuildOutput"
                                     }
                                 ],
-                                "Name": "DevDeploy",
+                                "Name": "Deploy",
                                 "RunOrder": "1"
                             }
                         ],
-                        "Name": "DevDeploy"
+                        "Name": "Deploy"
                     }
                 ]
             },
