@@ -23,6 +23,7 @@ phases:
       - mv ./klar-2.0.1-linux-amd64 ./klar
       - DOCKER_LOGIN=`aws ecr get-login --region $AWS_DEFAULT_REGION`
       - PASSWORD=`echo $DOCKER_LOGIN | cut -d' ' -f6`
+      - mkdir outputs
   build:
     commands:
       - echo Build started on `date`
@@ -37,9 +38,9 @@ phases:
       - docker push $IMAGE_URI
       - echo Running Clair scan on the image
       - DOCKER_USER=AWS DOCKER_PASSWORD=${PASSWORD} CLAIR_ADDR=$CLAIR_URL ../klar $IMAGE_URI
-      - printf '[{"name":"ghost","imageUri":"%s"}]' "$IMAGE_URI" > ../images.json
+      - printf '[{"name":"ghost","imageUri":"%s"}]' "$IMAGE_URI" > ../outputs/images.json
+      - cp ../ghost-deploy-fargate.template ../outputs
 artifacts:
   files:
-  - images.json
-  - ghost-deploy-fargate.template
+  - outputs/*
   discard-paths: yes
