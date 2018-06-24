@@ -73,18 +73,6 @@ CodePipelineServicePolicy = t.add_resource(iam.PolicyType(
             {
                 "Effect": "Allow",
                 "Action": [
-                    "ecs:DescribeTaskDefinition",
-                    "ecs:RegisterTaskDefinition",
-                    "ecs:DescribeServices",
-                    "ecs:UpdateService",
-                    "ecs:DescribeTasks",
-                    "ecs:ListTasks"
-                ],
-                "Resource": "*"
-            },
-            {
-                "Effect": "Allow",
-                "Action": [
                     "codebuild:StartBuild",
                     "codebuild:BatchGetBuilds"
                 ],
@@ -171,12 +159,7 @@ CloudFormationServicePolicy = t.add_resource(iam.PolicyType(
             {
                 "Effect": "Allow",
                 "Action": [
-                    "ecs:DescribeTaskDefinition",
-                    "ecs:RegisterTaskDefinition",
-                    "ecs:DescribeServices",
-                    "ecs:UpdateService",
-                    "ecs:DescribeTasks",
-                    "ecs:ListTasks"
+                    "ecs:*"
                 ],
                 "Resource": "*"
             },
@@ -274,7 +257,11 @@ pipeline = t.add_resource(Pipeline(
                         "ActionMode": "REPLACE_ON_FAILURE",
                         "Capabilities": "CAPABILITY_IAM",
                         "RoleArn": GetAtt('CloudFormationServiceRole', 'Arn'),
-                        "ParameterOverrides": "{\"Cluster\": Ref(ECSClusterName), \"GhostImage\": {\"Fn::GetParam\" : [\"BuildOutput\",\"images.json\",\"imageUri\"]}, \"DependencyStackName\": Ref(DependencyStackName)}",
+
+                        "ParameterOverrides": Join("", ["{","\"Cluster\"",":","\"",Ref(ECSClusterName),"\"",",",
+                                                        "\"DependencyStackName\"",":","\"",Ref(DependencyStackName),"\"",",",
+                                                        "\"GhostImage\"",":",
+                                                        "{\"Fn::GetParam\" : [\"BuildOutput\",\"images.json\",\"imageUri\"]}","}"]),
                         "TemplatePath": "BuildOutput::ghost-deploy-fargate.template",
                         "StackName": "Ghost-Fargate"
                     },

@@ -32,12 +32,7 @@
                         },
                         {
                             "Action": [
-                                "ecs:DescribeTaskDefinition",
-                                "ecs:RegisterTaskDefinition",
-                                "ecs:DescribeServices",
-                                "ecs:UpdateService",
-                                "ecs:DescribeTasks",
-                                "ecs:ListTasks"
+                                "ecs:*"
                             ],
                             "Effect": "Allow",
                             "Resource": "*"
@@ -217,18 +212,6 @@
                     "Statement": [
                         {
                             "Action": "iam:PassRole",
-                            "Effect": "Allow",
-                            "Resource": "*"
-                        },
-                        {
-                            "Action": [
-                                "ecs:DescribeTaskDefinition",
-                                "ecs:RegisterTaskDefinition",
-                                "ecs:DescribeServices",
-                                "ecs:UpdateService",
-                                "ecs:DescribeTasks",
-                                "ecs:ListTasks"
-                            ],
                             "Effect": "Allow",
                             "Resource": "*"
                         },
@@ -464,7 +447,34 @@
                                 "Configuration": {
                                     "ActionMode": "REPLACE_ON_FAILURE",
                                     "Capabilities": "CAPABILITY_IAM",
-                                    "ParameterOverrides": "{\"Cluster\": Ref(ECSClusterName), \"GhostImage\": {\"Fn::GetParam\" : [\"BuildOutput\",\"images.json\",\"imageUri\"]}, \"DependencyStackName\": Ref(DependencyStackName)}",
+                                    "ParameterOverrides": {
+                                        "Fn::Join": [
+                                            "",
+                                            [
+                                                "{",
+                                                "\"Cluster\"",
+                                                ":",
+                                                "\"",
+                                                {
+                                                    "Ref": "ECSClusterName"
+                                                },
+                                                "\"",
+                                                ",",
+                                                "\"DependencyStackName\"",
+                                                ":",
+                                                "\"",
+                                                {
+                                                    "Ref": "DependencyStackName"
+                                                },
+                                                "\"",
+                                                ",",
+                                                "\"GhostImage\"",
+                                                ":",
+                                                "{\"Fn::GetParam\" : [\"BuildOutput\",\"images.json\",\"imageUri\"]}",
+                                                "}"
+                                            ]
+                                        ]
+                                    },
                                     "RoleArn": {
                                         "Fn::GetAtt": [
                                             "CloudFormationServiceRole",
