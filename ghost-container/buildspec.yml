@@ -18,9 +18,9 @@ phases:
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
       - IMAGE_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG"
       - echo Setting up Clair client Klar
-      - wget https://github.com/optiopay/klar/releases/download/v2.0.1/klar-2.0.1-linux-amd64
-      - chmod +x ./klar-2.0.1-linux-amd64
-      - mv ./klar-2.0.1-linux-amd64 ./klar
+      - wget https://github.com/optiopay/klar/releases/download/v2.3.0/klar-2.3.0-linux-amd64
+      - chmod +x ./klar-2.3.0-linux-amd64
+      - mv ./klar-2.3.0-linux-amd64 ./klar
       - DOCKER_LOGIN=`aws ecr get-login --region $AWS_DEFAULT_REGION`
       - PASSWORD=`echo $DOCKER_LOGIN | cut -d' ' -f6`
       - mkdir outputs
