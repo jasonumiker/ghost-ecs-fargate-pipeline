@@ -1,5 +1,15 @@
 {
     "AWSTemplateFormatVersion": "2010-09-09",
+    "Conditions": {
+        "Cloud9Condition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "DeployCloud9"
+                },
+                "true"
+            ]
+        }
+    },
     "Outputs": {
         "ALBURL": {
             "Description": "URL of the ALB",
@@ -15,6 +25,15 @@
         "DBPassword": {
             "Description": "The database admin account password",
             "NoEcho": true,
+            "Type": "String"
+        },
+        "DeployCloud9": {
+            "AllowedValues": [
+                "true",
+                "false"
+            ],
+            "Default": "true",
+            "Description": "Whether to deploy Cloud9",
             "Type": "String"
         },
         "GhostImage": {
@@ -64,6 +83,7 @@
             "Type": "AWS::CloudFormation::Stack"
         },
         "Cloud9Stack": {
+            "Condition": "Cloud9Condition",
             "DependsOn": "InitCodeCommitStack",
             "Properties": {
                 "Parameters": {
@@ -198,6 +218,7 @@
             "Type": "AWS::CodeCommit::Repository"
         },
         "InitCodeCommitStack": {
+            "DependsOn": "DepdendenciesStack",
             "Properties": {
                 "Parameters": {
                     "CodeCommitRepoAddr": {
